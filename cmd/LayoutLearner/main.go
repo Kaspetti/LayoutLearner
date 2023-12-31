@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/Kaspetti/LayoutLearner/internal/dictionary"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -12,13 +13,16 @@ const testString = "aion nio aia eano nona anio"
 
 
 func main() {
+    characterPriority, err := dictionary.GetCharacterPriority("resources/words.txt")
+    if err != nil {
+        panic(err)
+    }
+    _ = characterPriority
+
     app := tview.NewApplication()
     textView := tview.NewTextView().
         SetDynamicColors(true).
-        SetRegions(true).
-        SetChangedFunc(func() {
-            app.Draw()
-        })
+        SetRegions(true)
 
     colorMap := make([]string, len(testString))
     for i := 0; i < len(testString); i++ {
@@ -34,6 +38,15 @@ func main() {
             return event
         }
 
+        if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
+            currentChar -= 1
+
+            if currentChar < 0 { currentChar = 0 }
+
+            textView.Highlight(fmt.Sprintf("%d", currentChar))
+            return event
+        }
+
         if event.Rune() == rune(testString[currentChar]) {
             colorMap[currentChar] = "green"
         } else {
@@ -41,8 +54,10 @@ func main() {
         }
 
         drawText(textView, colorMap)
-        textView.Highlight(fmt.Sprintf("%d", currentChar+1))
-        currentChar += 1
+
+        currentChar = (currentChar + 1) % len(testString)
+
+        textView.Highlight(fmt.Sprintf("%d", currentChar))
 
         return event
     })
