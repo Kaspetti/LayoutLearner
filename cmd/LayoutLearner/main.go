@@ -11,35 +11,54 @@ import (
 )
 
 
-var words = ""
-var colorMap = []string{}
-var currentChar = 0
-var textView = tview.NewTextView().SetDynamicColors(true).SetRegions(true)
-var characterPriority = []dictionary.CharacterPriority{}
-var app = tview.NewApplication()
+type GameContext struct {
+    Words               string
+    ColorMap            []string
+    CurrentCharIndex    int
+    CharacterPriority   []dictionary.CharacterPriority
+    App                 *tview.Application
+    TextView            *tview.TextView
+    Correct             int
+    Incorrect           int
+}
 
-var correct = 0
-var incorrect = 0
+var gameCtx GameContext
+var inputCaptureChangeChan = make(chan func(*tcell.EventKey) *tcell.EventKey)
 
 
 func main() {
     rand.Seed(time.Now().UTC().UnixNano())
 
-    var err error
-    characterPriority, err = dictionary.GetCharacterPriority("resources/words.txt")
+    characterPriority, err := dictionary.GetCharacterPriority("resources/words.txt")
     if err != nil {
         panic(err)
     }
 
-    words, colorMap = newGame(characterPriority)
+    gameCtx = GameContext{
+        App: tview.NewApplication(),
+        TextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
+        CharacterPriority: characterPriority,
+    }
+    gameCtx.newGame()
 
-    drawText(textView, words, colorMap)
+    drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
 
-    textView.Highlight("0")
-    app.SetInputCapture(gameLogic)
+    gameCtx.TextView.Highlight("0")
+    gameCtx.App.SetInputCapture(gameLogic)
 
-    textView.SetBorder(true)
-    if err := app.SetRoot(textView, true).SetFocus(textView).Run(); err != nil {
+    go func() {
+        for {
+            select {
+            case changeFunc := <-inputCaptureChangeChan:
+                gameCtx.App.QueueUpdate(func() {
+                    gameCtx.App.SetInputCapture(changeFunc)
+                })
+            }
+        }
+    }()
+
+    gameCtx.TextView.SetBorder(true)
+    if err := gameCtx.App.SetRoot(gameCtx.TextView, true).SetFocus(gameCtx.TextView).Run(); err != nil {
         panic(err)
     }
 }
@@ -47,17 +66,14 @@ func main() {
 
 func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
     if event.Key() == tcell.KeyEnter {
-        words, colorMap = newGame(characterPriority)
-        currentChar = 0 
-        correct = 0
-        incorrect = 0
-        textView.Highlight("0")
-        drawText(textView, words, colorMap)
+        gameCtx.newGame()
+        gameCtx.TextView.Highlight("0")
+        drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
 
-        textView.SetInputCapture(gameLogic)
-        return event
+        inputCaptureChangeChan <- gameLogic
+        return nil
     } else if event.Key() == tcell.KeyEscape {
-        app.Stop()
+        gameCtx.App.Stop()
     }
 
     return event
@@ -65,40 +81,39 @@ func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
 
 
 func gameLogic(event *tcell.EventKey) *tcell.EventKey {
-    if currentChar >= len(words) {
+    if gameCtx.CurrentCharIndex >= len(gameCtx.Words) {
         return event
     }
 
     if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
-        colorMap[currentChar] = "white"
+        gameCtx.ColorMap[gameCtx.CurrentCharIndex] = "white"
 
-        currentChar -= 1
-        if currentChar < 0 { currentChar = 0 }
+        gameCtx.CurrentCharIndex -= 1
+        if gameCtx.CurrentCharIndex < 0 { gameCtx.CurrentCharIndex = 0 }
 
-        textView.Highlight(fmt.Sprintf("%d", currentChar))
-        drawText(textView, words, colorMap)
+        gameCtx.TextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
+        drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
         return event
     }
 
-    if event.Rune() == rune(words[currentChar]) {
-        colorMap[currentChar] = "green"
-        correct += 1
+    if event.Rune() == rune(gameCtx.Words[gameCtx.CurrentCharIndex]) {
+        gameCtx.ColorMap[gameCtx.CurrentCharIndex] = "green"
+        gameCtx.Correct += 1
     } else {
-        colorMap[currentChar] = "red"
-        incorrect += 1
+        gameCtx.ColorMap[gameCtx.CurrentCharIndex] = "red"
+        gameCtx.Incorrect += 1
     }
 
-    drawText(textView, words, colorMap)
+    drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
 
-    currentChar += 1
-    if currentChar >= len(words) - 1 {
+    gameCtx.CurrentCharIndex += 1
+    if gameCtx.CurrentCharIndex >= len(gameCtx.Words) - 1 {
         showEndScreen()
-
-        textView.SetInputCapture(endScreenLogic)
+        inputCaptureChangeChan <- endScreenLogic
         return event
     }
 
-    textView.Highlight(fmt.Sprintf("%d", currentChar))
+    gameCtx.TextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
 
     return event
 
@@ -106,16 +121,16 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
 
 
 func showEndScreen() {
-    textView.Clear()
-    accuracy := float64(correct * 100) / float64(correct + incorrect)
+    gameCtx.TextView.Clear()
+    accuracy := float64(gameCtx.Correct * 100) / float64(gameCtx.Correct + gameCtx.Incorrect)
 
-    fmt.Fprintf(textView, "[white]Your accuracy was: %.2f\n[yellow]Press enter to continue...\n[red]Press escape to exit...", accuracy)
+    fmt.Fprintf(gameCtx.TextView, "[white]Your accuracy was: %.2f\n[yellow]Press enter to continue...\n[red]Press escape to exit...", accuracy)
 }
 
 
-func newGame(characterPriority []dictionary.CharacterPriority) (string, []string){
+func (gc *GameContext) newGame() {
     numChars := 5
-    usedCharacters := characterPriority[:numChars]
+    usedCharacters := gc.CharacterPriority[:numChars]
     priorityCharacter := usedCharacters[0]
     wordCount := 5
 
@@ -129,7 +144,11 @@ func newGame(characterPriority []dictionary.CharacterPriority) (string, []string
         colorMap[i] = "white"
     }
 
-    return words, colorMap
+    gc.Words = words
+    gc.ColorMap = colorMap
+    gc.CurrentCharIndex = 0
+    gc.Correct = 0
+    gc.Incorrect = 0
 }
 
 
