@@ -1,11 +1,11 @@
 package dictionary
 
-
 import (
-    "bufio"
-    "os"
-    "strings"
-    "sort"
+	"bufio"
+	"math/rand"
+	"os"
+	"sort"
+	"strings"
 )
 
 
@@ -53,4 +53,22 @@ func GetCharacterPriority(dictionaryPath string) ([]CharacterPriority, error) {
     })
 
     return characterPriorities, nil
+}
+
+
+func GenerateWord(chars []CharacterPriority, priorityCharacter CharacterPriority) string {
+    length := rand.Intn(3) + 3
+    priorityPosition := rand.Intn(length)
+
+    word := ""
+    for i := 0; i < length; i++ {
+        if i == priorityPosition {
+            word += string(priorityCharacter.Character)
+            continue
+        }
+
+        word += string(chars[rand.Intn(len(chars))].Character)
+    }
+
+    return word
 }
