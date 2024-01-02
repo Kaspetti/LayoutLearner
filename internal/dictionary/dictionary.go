@@ -1,3 +1,6 @@
+// Package dictionary contains functionality for any dictonary operations for the 
+// layout learner. Included are functions for getting the most used characters given a
+// file of words, and also for generating random "words" given som parameters.
 package dictionary
 
 import (
@@ -9,12 +12,17 @@ import (
 )
 
 
+// CharacterPriority contains a character and its priority.
+// The priority of a character is the ratio of how often it 
+// occurs in a dictionary.
 type CharacterPriority struct {
     Character   rune
     Priority    float64
 }
 
 
+// GetCharacterPriority returns a list of character priorities for each character in a 
+// dictionary given the path of the dictionary file.
 func GetCharacterPriority(dictionaryPath string) ([]CharacterPriority, error) {
     f, err := os.Open(dictionaryPath)
     if err != nil {
@@ -56,6 +64,9 @@ func GetCharacterPriority(dictionaryPath string) ([]CharacterPriority, error) {
 }
 
 
+// GenerateWord generates a random word using the characters provided. The caller may choose the
+// length of the word and a priority character. The priority character is guaranteed to be within
+// the word. 
 func GenerateWord(chars []CharacterPriority, priorityCharacter CharacterPriority) string {
     length := rand.Intn(3) + 3
     priorityPosition := rand.Intn(length)

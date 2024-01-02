@@ -1,3 +1,6 @@
+// Package game contains functionality for handling the game logic.
+// The game logic includes drawing the game to the terminal and handling
+// any input for each stage of the game.
 package game
 
 import (
@@ -8,21 +11,30 @@ import (
 	"github.com/rivo/tview"
 )
 
+// GameContext stores information of the game.
 type GameContext struct {
-    Words               string
-    ColorMap            []string
-    CurrentCharIndex    int
-    CharacterPriority   []dictionary.CharacterPriority
-    App                 *tview.Application
-    TextView            *tview.TextView
-    Correct             int
-    Incorrect           int
+    Words               string                              // The words of the current game
+    ColorMap            []string                            // The ColorMap for the characters. The colors of each character is a word representing its the color at that index.
+    CurrentCharIndex    int                                 // The index of the character currently in play
+    CharacterPriority   []dictionary.CharacterPriority      // The character priorites for the dictionary in use
+    App                 *tview.Application                  // The tview application for rendering to the terminal
+    TextView            *tview.TextView                     // The tview textview element for showing the text
+    Correct             int                                 // The amount of correctly written characters this round
+    Incorrect           int                                 // The amount of incorrently written characters this round
 }
 
 var gameCtx GameContext
+
+// Channel for handling changes in the input capture. This is handled by a channel 
+// and a goroutine as changing the input capture function does not work as 
+// expected when changed from within the current input capture function.
 var inputCaptureChangeChan = make(chan func(*tcell.EventKey) *tcell.EventKey)
 
 
+// StartGame starts the game. It gets the character priorities of the 
+// dictionary in use and creates the tview application and textview.
+// It then creates a fresh game context and starts the goroutine for
+// handling input capture function changes.
 func StartGame() error {
     characterPriority, err := dictionary.GetCharacterPriority("resources/words.txt")
     if err != nil {
@@ -59,6 +71,8 @@ func StartGame() error {
 }
 
 
+// newGame resets the game gontext by generating new words from the 
+// character priority and resetting the other fields to their original value.
 func (gc *GameContext) newGame() {
     numChars := 5
     charactersInUse := gc.CharacterPriority[:numChars]
@@ -83,6 +97,10 @@ func (gc *GameContext) newGame() {
 }
 
 
+// gameLogic handles the input from the user when the game is running.
+// It checks if the user inputs the correct character according to 
+// the current character index. When the user reaches the end of the words
+// it signals to change the current input capture function to endScreenLogic.
 func gameLogic(event *tcell.EventKey) *tcell.EventKey {
     if gameCtx.CurrentCharIndex >= len(gameCtx.Words) {
         return event
@@ -123,6 +141,8 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
 }
 
 
+// showEndScreen prints the end screen for the game, providing the user 
+// with information about their accuracy.
 func showEndScreen() {
     gameCtx.TextView.Clear()
     accuracy := float64(gameCtx.Correct * 100) / float64(gameCtx.Correct + gameCtx.Incorrect)
@@ -131,6 +151,11 @@ func showEndScreen() {
 }
 
 
+// endScreenLogic handles the player input on the end screen.
+// From here the player is able to either start a new game with the
+// <Enter> key or stop the game using <Escape>. If <Enter> is pressed
+// the game context will be reset and the input capture function will
+// transition to gameLogic
 func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
     if event.Key() == tcell.KeyEnter {
         gameCtx.newGame()
@@ -147,6 +172,8 @@ func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
 }
 
 
+// drawText draws the words to the textView giving each character the colors
+// by index listed in the given color map.
 func drawText(textView *tview.TextView, words string, colorMap []string) {
     textView.Clear()
 
