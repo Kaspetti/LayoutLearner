@@ -55,8 +55,8 @@ func GetCharacterPriority(dictionaryPath string) ([]rune, error) {
 // GenerateWord generates a random word using the characters provided. The caller may choose the
 // length of the word and a priority character. The priority character is guaranteed to be within
 // the word. 
-func GenerateWord(chars []rune, priorityCharacter rune) string {
-    length := rand.Intn(3) + 3
+func GenerateWord(chars []rune, priorityCharacter rune, maxLength int) string {
+    length := rand.Intn(maxLength-2) + 3
     priorityPosition := rand.Intn(length)
 
     word := ""

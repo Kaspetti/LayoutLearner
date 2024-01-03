@@ -13,14 +13,17 @@ import (
 
 // GameContext stores information of the game.
 type GameContext struct {
-    Words               string                              // The words of the current game
-    ColorMap            []string                            // The ColorMap for the characters. The colors of each character is a word representing its the color at that index.
-    CurrentCharIndex    int                                 // The index of the character currently in play
-    CharacterPriority   []rune                              // Slice of all characters in the dictionary sorted by priority
-    App                 *tview.Application                  // The tview application for rendering to the terminal
-    TextView            *tview.TextView                     // The tview textview element for showing the text
-    Correct             int                                 // The amount of correctly written characters this round
-    Incorrect           int                                 // The amount of incorrently written characters this round
+    Words               string                  // The words of the current game
+    ColorMap            []string                // The ColorMap for the characters. The colors of each character is a word representing its the color at that index.
+    CurrentCharIndex    int                     // The index of the character currently in play
+    CharacterPriority   []rune                  // Slice of all characters in the dictionary sorted by priority
+    App                 *tview.Application      // The tview application for rendering to the terminal
+    TextView            *tview.TextView         // The tview textview element for showing the text
+    Correct             int                     // The amount of correctly written characters this round
+    Incorrect           int                     // The amount of incorrently written characters this round
+    NumChars            int                     // The number of characters from the CharacterPriority to user when generating wwords
+    MaxWordLength       int                     // The maximum length of words generated
+    WordCount           int                     // Amount of words generated per round
 }
 
 var gameCtx GameContext
@@ -45,6 +48,9 @@ func StartGame() error {
         App: tview.NewApplication(),
         TextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
         CharacterPriority: characterPriority,
+        NumChars: 6,
+        MaxWordLength: 5,
+        WordCount: 10,
     }
     gameCtx.newGame()
 
@@ -74,14 +80,12 @@ func StartGame() error {
 // newGame resets the game gontext by generating new words from the 
 // character priority and resetting the other fields to their original value.
 func (gc *GameContext) newGame() {
-    numChars := 5
-    charactersInUse := gc.CharacterPriority[:numChars]
+    charactersInUse := gc.CharacterPriority[:gc.NumChars]
     priorityCharacter := charactersInUse[0]
-    wordCount := 5
 
     words := ""
-    for i := 0; i < wordCount; i++ {
-        words += fmt.Sprintf("%s ", dictionary.GenerateWord(charactersInUse, priorityCharacter))
+    for i := 0; i < gc.WordCount; i++ {
+        words += fmt.Sprintf("%s ", dictionary.GenerateWord(charactersInUse, priorityCharacter, gc.MaxWordLength))
     }
 
     colorMap := make([]string, len(words))
