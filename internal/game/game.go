@@ -102,8 +102,8 @@ func (gc *GameContext) newGame() {
 // the current character index. When the user reaches the end of the words
 // it signals to change the current input capture function to endScreenLogic.
 func gameLogic(event *tcell.EventKey) *tcell.EventKey {
-    if gameCtx.CurrentCharIndex >= len(gameCtx.Words) {
-        return event
+    if event.Key() == tcell.KeyEscape {
+        gameCtx.App.Stop()
     }
 
     if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
