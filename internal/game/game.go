@@ -5,30 +5,42 @@ package game
 
 import (
 	"fmt"
+	"image/color"
 
 	"github.com/Kaspetti/LayoutLearner/internal/dictionary"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
-// GameContext stores information of the game.
-type GameContext struct {
-    Words               string                  // The words of the current game
-    ColorMap            []string                // The ColorMap for the characters. The colors of each character is a word representing its the color at that index.
-    CurrentCharIndex    int                     // The index of the character currently in play
-    CharacterPriority   []rune                  // Slice of all characters in the dictionary sorted by priority
-    Correct             int                     // The amount of correctly written characters this round
-    Incorrect           int                     // The amount of incorrently written characters this round
-    NumChars            int                     // The number of characters from the CharacterPriority to user when generating wwords
-    MaxWordLength       int                     // The maximum length of words generated
-    WordCount           int                     // Amount of words generated per round
+type CharacterAccuracy struct {
+    Correct     float64
+    Attempts    float64
+    Accuracy    float64
 }
 
+
+// GameContext stores information of the game.
+type GameContext struct {
+    Words               string                      // The words of the current game
+    CurrentCharIndex    int                         // The index of the character currently in play
+    CharacterPriority   []rune                      // Slice of all characters in the dictionary sorted by priority
+    CurrentChars        []rune                      // Slice of the currently used characters in each lesson
+    CharacterAccuracies map[rune]CharacterAccuracy  // The accuracy the user has with each character
+    Correct             int                         // The amount of correctly written characters this round
+    Incorrect           int                         // The amount of incorrently written characters this round
+    NumChars            int                         // The number of characters from the CharacterPriority to user when generating wwords
+    MaxWordLength       int                         // The maximum length of words generated
+    WordCount           int                         // Amount of words generated per round
+}
+
+
+// Graphics stores all elements for showing the TUI
 type Graphics struct {
-    App             *tview.Application          // The tview application for rendering to the terminal
-    MainTextView    *tview.TextView             // The main text view where the game takes place
-    InfoTextView    *tview.TextView             // An information text view to the right of the main text view
-    MainFlex        *tview.Flex                 // The main tview flex box containing all other elements
+    App                 *tview.Application          // The tview application for rendering to the terminal
+    MainTextView        *tview.TextView             // The main text view where the game takes place
+    InfoTextView        *tview.TextView             // An information text view to the right of the main text view
+    MainFlex            *tview.Flex                 // The main tview flex box containing all other elements
+    MainColorMap        []string                    // The color map for the characters. The colors of each character is a word representing its the color at that index.
 }
 
 var gameCtx     GameContext
@@ -55,9 +67,8 @@ func StartGame() error {
         NumChars: 5,
         MaxWordLength: 5,
         WordCount: 10,
+        CharacterAccuracies: make(map[rune]CharacterAccuracy),
     }
-    gameCtx.newGame()
-
     graphics = Graphics{
         App: tview.NewApplication(),
         MainTextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
@@ -68,6 +79,8 @@ func StartGame() error {
         AddItem(graphics.MainTextView, 0, 1, true).
         AddItem(graphics.InfoTextView, 20, 1, false)
 
+
+    newGame()
     drawText()
 
     graphics.MainTextView.Highlight("0")
@@ -85,7 +98,7 @@ func StartGame() error {
 
     graphics.MainTextView.SetBorder(true)
     graphics.InfoTextView.SetBorder(true)
-    if err := graphics.App.SetRoot(graphics.MainFlex, true).SetFocus(graphics.MainFlex).Run(); err != nil {
+    if err := graphics.App.SetRoot(graphics.MainFlex, true).Run(); err != nil {
         return err
     }
 
@@ -95,13 +108,13 @@ func StartGame() error {
 
 // newGame resets the game gontext by generating new words from the 
 // character priority and resetting the other fields to their original value.
-func (gc *GameContext) newGame() {
-    charactersInUse := gc.CharacterPriority[:gc.NumChars]
-    priorityCharacter := charactersInUse[0]
+func newGame() {
+    gameCtx.CurrentChars = gameCtx.CharacterPriority[:gameCtx.NumChars]
+    priorityCharacter := gameCtx.CurrentChars[0]
 
     words := ""
-    for i := 0; i < gc.WordCount; i++ {
-        words += fmt.Sprintf("%s ", dictionary.GenerateWord(charactersInUse, priorityCharacter, gc.MaxWordLength))
+    for i := 0; i < gameCtx.WordCount; i++ {
+        words += fmt.Sprintf("%s ", dictionary.GenerateWord(gameCtx.CurrentChars, priorityCharacter, gameCtx.MaxWordLength))
     }
 
     colorMap := make([]string, len(words))
@@ -109,11 +122,11 @@ func (gc *GameContext) newGame() {
         colorMap[i] = "white"
     }
 
-    gc.Words = words
-    gc.ColorMap = colorMap
-    gc.CurrentCharIndex = 0
-    gc.Correct = 0
-    gc.Incorrect = 0
+    gameCtx.Words = words
+    graphics.MainColorMap = colorMap
+    gameCtx.CurrentCharIndex = 0
+    gameCtx.Correct = 0
+    gameCtx.Incorrect = 0
 }
 
 
@@ -127,7 +140,7 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
     }
 
     if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
-        gameCtx.ColorMap[gameCtx.CurrentCharIndex] = "white"
+        graphics.MainColorMap[gameCtx.CurrentCharIndex] = "white"
 
         gameCtx.CurrentCharIndex -= 1
         if gameCtx.CurrentCharIndex < 0 { gameCtx.CurrentCharIndex = 0 }
@@ -138,11 +151,15 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
     }
 
     if event.Rune() == rune(gameCtx.Words[gameCtx.CurrentCharIndex]) {
-        gameCtx.ColorMap[gameCtx.CurrentCharIndex] = "green"
+        graphics.MainColorMap[gameCtx.CurrentCharIndex] = "blue"
         gameCtx.Correct += 1
+
+        updateAccuracy(rune(gameCtx.Words[gameCtx.CurrentCharIndex]), true)
     } else {
-        gameCtx.ColorMap[gameCtx.CurrentCharIndex] = "red"
+        graphics.MainColorMap[gameCtx.CurrentCharIndex] = "red"
         gameCtx.Incorrect += 1
+
+        updateAccuracy(rune(gameCtx.Words[gameCtx.CurrentCharIndex]), false)
     }
 
     drawText()
@@ -158,6 +175,34 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
 
     return event
 
+}
+
+
+// updateAccuracy updates the accuracy of a rune given if the attempt
+// was a success or not
+func updateAccuracy(char rune, success bool) {
+    ca, ok := gameCtx.CharacterAccuracies[char]
+    
+    if !ok {
+        // Character not found, create a new CharacterAccuracy
+        ca = CharacterAccuracy{}
+    }
+    
+    ca.Attempts++
+    
+    if success {
+        ca.Correct++
+    }
+
+    // Make sure to handle the case where Attempts is zero to avoid division by zero
+    if ca.Attempts > 0 {
+        ca.Accuracy = float64(ca.Correct) / float64(ca.Attempts)
+    } else {
+        ca.Accuracy = 0.0
+    }
+
+    // Update or add the character accuracy in the map
+    gameCtx.CharacterAccuracies[char] = ca
 }
 
 
@@ -178,7 +223,7 @@ func showEndScreen() {
 // transition to gameLogic
 func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
     if event.Key() == tcell.KeyEnter {
-        gameCtx.newGame()
+        newGame()
         graphics.MainTextView.Highlight("0")
         drawText()
 
@@ -196,8 +241,54 @@ func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
 // by index listed in the given color map.
 func drawText() {
     graphics.MainTextView.Clear()
+    graphics.InfoTextView.Clear()
 
+    // Draw the words to the main text view
     for i, char := range gameCtx.Words {
-        fmt.Fprintf(graphics.MainTextView, `["%d"][%s]%c[""]`, i, gameCtx.ColorMap[i], char)
+        fmt.Fprintf(graphics.MainTextView, `["%d"][%s]%c[""]`, i, graphics.MainColorMap[i], char)
     }        
+
+    // Draw information
+    fmt.Fprint(graphics.InfoTextView, "[white]|")
+    for _, char := range gameCtx.CurrentChars {
+        fmt.Fprintf(
+            graphics.InfoTextView,
+            `["usedChars"][%s]%c[""]`,
+            interpolateColor(gameCtx.CharacterAccuracies[char].Accuracy),
+            char,
+        )
+        fmt.Fprint(graphics.InfoTextView, "[white]|")
+    }
+    graphics.InfoTextView.Highlight("usedChars")
 } 
+
+
+func interpolateColor(t float64) string {
+	if t < 0 {
+		t = 0
+	} else if t > 1 {
+		t = 1
+	}
+
+	// Define the RGB values for each color stop
+	color0 := color.RGBA{231, 72, 86, 255}
+	color1 := color.RGBA{249, 241, 165, 255}
+	color2 := color.RGBA{59, 120, 255, 255}
+
+	// Interpolate between the colors based on 't'
+	var r, g, b uint8
+	r = uint8(float64(color0.R)*(1-t) + float64(color1.R)*t)
+	g = uint8(float64(color0.G)*(1-t) + float64(color1.G)*t)
+	b = uint8(float64(color0.B)*(1-t) + float64(color1.B)*t)
+
+	if t >= 0.5 {
+		t = (t - 0.5) * 2 // Scale t for interpolation between color1 and color2
+		r = uint8(float64(color1.R)*(1-t) + float64(color2.R)*t)
+		g = uint8(float64(color1.G)*(1-t) + float64(color2.G)*t)
+		b = uint8(float64(color1.B)*(1-t) + float64(color2.B)*t)
+	}
+
+	// Convert the interpolated color to hex format
+	colorHex := fmt.Sprintf("#%02X%02X%02X", r, g, b)
+	return colorHex
+}
