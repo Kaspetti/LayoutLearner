@@ -79,7 +79,7 @@ func GenerateWord(chars []rune, priorityCharacter rune, maxLength int) string {
         if charInARow == 2 {
             excludeChar = previousCharacter
         }
-        char := getRandomCharacter(chars, charsUsed, length/3, excludeChar)
+        char := getRandomCharacter(chars, charsUsed, length/2, excludeChar)
 
         // Makes sure the loop breaks if there are no characters possible to use
         if char == ' ' {

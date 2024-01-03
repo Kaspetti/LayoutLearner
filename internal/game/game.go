@@ -17,8 +17,6 @@ type GameContext struct {
     ColorMap            []string                // The ColorMap for the characters. The colors of each character is a word representing its the color at that index.
     CurrentCharIndex    int                     // The index of the character currently in play
     CharacterPriority   []rune                  // Slice of all characters in the dictionary sorted by priority
-    App                 *tview.Application      // The tview application for rendering to the terminal
-    TextView            *tview.TextView         // The tview textview element for showing the text
     Correct             int                     // The amount of correctly written characters this round
     Incorrect           int                     // The amount of incorrently written characters this round
     NumChars            int                     // The number of characters from the CharacterPriority to user when generating wwords
@@ -26,7 +24,15 @@ type GameContext struct {
     WordCount           int                     // Amount of words generated per round
 }
 
-var gameCtx GameContext
+type Graphics struct {
+    App             *tview.Application          // The tview application for rendering to the terminal
+    MainTextView    *tview.TextView             // The main text view where the game takes place
+    InfoTextView    *tview.TextView             // An information text view to the right of the main text view
+    MainFlex        *tview.Flex                 // The main tview flex box containing all other elements
+}
+
+var gameCtx     GameContext
+var graphics    Graphics
 
 // Channel for handling changes in the input capture. This is handled by a channel 
 // and a goroutine as changing the input capture function does not work as 
@@ -41,12 +47,10 @@ var inputCaptureChangeChan = make(chan func(*tcell.EventKey) *tcell.EventKey)
 func StartGame() error {
     characterPriority, err := dictionary.GetCharacterPriority("resources/words.txt")
     if err != nil {
-        panic(err)
+        return err
     }
 
     gameCtx = GameContext{
-        App: tview.NewApplication(),
-        TextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
         CharacterPriority: characterPriority,
         NumChars: 5,
         MaxWordLength: 5,
@@ -54,22 +58,34 @@ func StartGame() error {
     }
     gameCtx.newGame()
 
-    drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
+    graphics = Graphics{
+        App: tview.NewApplication(),
+        MainTextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
+        InfoTextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
+        MainFlex: tview.NewFlex(),
+    }
+    graphics.MainFlex.
+        AddItem(graphics.MainTextView, 0, 1, true).
+        AddItem(graphics.InfoTextView, 20, 1, false)
 
-    gameCtx.TextView.Highlight("0")
-    gameCtx.App.SetInputCapture(gameLogic)
+    drawText()
 
+    graphics.MainTextView.Highlight("0")
+    graphics.App.SetInputCapture(gameLogic)
+
+    // Sets up the goroutine for handling switching of input capture functions
     go func() {
         for {
             changeFunc := <-inputCaptureChangeChan
-                gameCtx.App.QueueUpdate(func() {
-                    gameCtx.App.SetInputCapture(changeFunc)
-                })
+            graphics.App.QueueUpdate(func() {
+                graphics.App.SetInputCapture(changeFunc)
+            })
         }
     }()
 
-    gameCtx.TextView.SetBorder(true)
-    if err := gameCtx.App.SetRoot(gameCtx.TextView, true).SetFocus(gameCtx.TextView).Run(); err != nil {
+    graphics.MainTextView.SetBorder(true)
+    graphics.InfoTextView.SetBorder(true)
+    if err := graphics.App.SetRoot(graphics.MainFlex, true).SetFocus(graphics.MainFlex).Run(); err != nil {
         return err
     }
 
@@ -107,7 +123,7 @@ func (gc *GameContext) newGame() {
 // it signals to change the current input capture function to endScreenLogic.
 func gameLogic(event *tcell.EventKey) *tcell.EventKey {
     if event.Key() == tcell.KeyEscape {
-        gameCtx.App.Stop()
+        graphics.App.Stop()
     }
 
     if event.Key() == tcell.KeyBackspace || event.Key() == tcell.KeyBackspace2 {
@@ -116,8 +132,8 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
         gameCtx.CurrentCharIndex -= 1
         if gameCtx.CurrentCharIndex < 0 { gameCtx.CurrentCharIndex = 0 }
 
-        gameCtx.TextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
-        drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
+        graphics.MainTextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
+        drawText()
         return event
     }
 
@@ -129,7 +145,7 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
         gameCtx.Incorrect += 1
     }
 
-    drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
+    drawText()
 
     gameCtx.CurrentCharIndex += 1
     if gameCtx.CurrentCharIndex >= len(gameCtx.Words) - 1 {
@@ -138,7 +154,7 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
         return event
     }
 
-    gameCtx.TextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
+    graphics.MainTextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
 
     return event
 
@@ -148,10 +164,10 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
 // showEndScreen prints the end screen for the game, providing the user 
 // with information about their accuracy.
 func showEndScreen() {
-    gameCtx.TextView.Clear()
+    graphics.MainTextView.Clear()
     accuracy := float64(gameCtx.Correct * 100) / float64(gameCtx.Correct + gameCtx.Incorrect)
 
-    fmt.Fprintf(gameCtx.TextView, "[white]Your accuracy was: %.2f\n[yellow]Press enter to continue...\n[red]Press escape to exit...", accuracy)
+    fmt.Fprintf(graphics.MainTextView, "[white]Your accuracy was: %.2f\n[yellow]Press enter to continue...\n[red]Press escape to exit...", accuracy)
 }
 
 
@@ -163,13 +179,13 @@ func showEndScreen() {
 func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
     if event.Key() == tcell.KeyEnter {
         gameCtx.newGame()
-        gameCtx.TextView.Highlight("0")
-        drawText(gameCtx.TextView, gameCtx.Words, gameCtx.ColorMap)
+        graphics.MainTextView.Highlight("0")
+        drawText()
 
         inputCaptureChangeChan <- gameLogic
         return nil
     } else if event.Key() == tcell.KeyEscape {
-        gameCtx.App.Stop()
+        graphics.App.Stop()
     }
 
     return event
@@ -178,10 +194,10 @@ func endScreenLogic(event *tcell.EventKey) *tcell.EventKey {
 
 // drawText draws the words to the textView giving each character the colors
 // by index listed in the given color map.
-func drawText(textView *tview.TextView, words string, colorMap []string) {
-    textView.Clear()
+func drawText() {
+    graphics.MainTextView.Clear()
 
-    for i, char := range words {
-        fmt.Fprintf(textView, `["%d"][%s]%c[""]`, i, colorMap[i], char)
+    for i, char := range gameCtx.Words {
+        fmt.Fprintf(graphics.MainTextView, `["%d"][%s]%c[""]`, i, gameCtx.ColorMap[i], char)
     }        
 } 
