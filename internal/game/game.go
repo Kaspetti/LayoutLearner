@@ -48,7 +48,7 @@ func StartGame() error {
         App: tview.NewApplication(),
         TextView: tview.NewTextView().SetRegions(true).SetDynamicColors(true),
         CharacterPriority: characterPriority,
-        NumChars: 6,
+        NumChars: 5,
         MaxWordLength: 5,
         WordCount: 10,
     }

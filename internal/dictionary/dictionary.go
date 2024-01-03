@@ -59,15 +59,66 @@ func GenerateWord(chars []rune, priorityCharacter rune, maxLength int) string {
     length := rand.Intn(maxLength-2) + 3
     priorityPosition := rand.Intn(length)
 
+    charsUsed := make(map[rune]int)
+    for _, char := range chars {
+        charsUsed[char] = 0
+    }
+
+    var previousCharacter rune
+    charInARow := 0
+
     word := ""
     for i := 0; i < length; i++ {
-        if i == priorityPosition {
+        if i == priorityPosition && previousCharacter != priorityCharacter {
             word += string(priorityCharacter)
+            charsUsed[priorityCharacter] += 1
             continue
         }
 
-        word += string(chars[rand.Intn(len(chars))])
+        var excludeChar rune
+        if charInARow == 2 {
+            excludeChar = previousCharacter
+        }
+        char := getRandomCharacter(chars, charsUsed, length/3, excludeChar)
+
+        // Makes sure the loop breaks if there are no characters possible to use
+        if char == ' ' {
+            break
+        }
+
+        word += string(char)
+        charsUsed[char] += 1
+
+        if char == previousCharacter {
+            charInARow += 1
+        } else {
+            charInARow = 1
+        }
+
+        previousCharacter = char
     }
 
     return word
+}
+
+
+// getRandomCharacter gets a random character from chars which has not been used more
+// than maxUsage.
+func getRandomCharacter(chars []rune, charsUsed map[rune]int, maxUsage int, exclude rune) rune {
+    availableChars := make([]rune, 0)
+    for _, char := range chars {
+        if char == exclude {
+            continue
+        }
+
+        if charsUsed[char] < maxUsage {
+            availableChars = append(availableChars, char)
+        }
+    }
+
+    if len(availableChars) > 0 {
+        return availableChars[rand.Intn((len(availableChars)))]
+    } else {
+        return ' '
+    }
 }
