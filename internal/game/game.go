@@ -16,7 +16,7 @@ type GameContext struct {
     Words               string                              // The words of the current game
     ColorMap            []string                            // The ColorMap for the characters. The colors of each character is a word representing its the color at that index.
     CurrentCharIndex    int                                 // The index of the character currently in play
-    CharacterPriority   []dictionary.CharacterPriority      // The character priorites for the dictionary in use
+    CharacterPriority   []rune                              // Slice of all characters in the dictionary sorted by priority
     App                 *tview.Application                  // The tview application for rendering to the terminal
     TextView            *tview.TextView                     // The tview textview element for showing the text
     Correct             int                                 // The amount of correctly written characters this round

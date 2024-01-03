@@ -12,18 +12,9 @@ import (
 )
 
 
-// CharacterPriority contains a character and its priority.
-// The priority of a character is the ratio of how often it 
-// occurs in a dictionary.
-type CharacterPriority struct {
-    Character   rune
-    Priority    float64
-}
-
-
 // GetCharacterPriority returns a list of character priorities for each character in a 
 // dictionary given the path of the dictionary file.
-func GetCharacterPriority(dictionaryPath string) ([]CharacterPriority, error) {
+func GetCharacterPriority(dictionaryPath string) ([]rune, error) {
     f, err := os.Open(dictionaryPath)
     if err != nil {
         return nil, err
@@ -46,39 +37,36 @@ func GetCharacterPriority(dictionaryPath string) ([]CharacterPriority, error) {
         }
     }
 
-    characterPriorities := make([]CharacterPriority, len(characterOccurences)) 
+    characters := make([]rune, len(characterOccurences)) 
     i := 0
-    for char, occurence := range characterOccurences {
-        characterPriorities[i] = CharacterPriority{
-            Character: char,
-            Priority: float64(occurence) / float64(totalCharacterCount),
-        } 
+    for char := range characterOccurences {
+        characters[i] = char
         i += 1
     }
 
-    sort.Slice(characterPriorities, func(i, j int) bool {
-        return characterPriorities[i].Priority > characterPriorities[j].Priority
+    sort.Slice(characters, func(i, j int) bool {
+        return characterOccurences[characters[i]] > characterOccurences[characters[j]]
     })
 
-    return characterPriorities, nil
+    return characters, nil
 }
 
 
 // GenerateWord generates a random word using the characters provided. The caller may choose the
 // length of the word and a priority character. The priority character is guaranteed to be within
 // the word. 
-func GenerateWord(chars []CharacterPriority, priorityCharacter CharacterPriority) string {
+func GenerateWord(chars []rune, priorityCharacter rune) string {
     length := rand.Intn(3) + 3
     priorityPosition := rand.Intn(length)
 
     word := ""
     for i := 0; i < length; i++ {
         if i == priorityPosition {
-            word += string(priorityCharacter.Character)
+            word += string(priorityCharacter)
             continue
         }
 
-        word += string(chars[rand.Intn(len(chars))].Character)
+        word += string(chars[rand.Intn(len(chars))])
     }
 
     return word
