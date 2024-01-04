@@ -250,6 +250,10 @@ func drawText() {
 
     // Draw the words to the main text view
     for i, char := range gameCtx.Words {
+        if char == ' ' {
+            fmt.Fprintf(graphics.MainTextView, `["%d"][%s][::u] [::-]`, i, graphics.MainColorMap[i])
+            continue
+        }
         fmt.Fprintf(graphics.MainTextView, `["%d"][%s]%c[""]`, i, graphics.MainColorMap[i], char)
     }        
 
@@ -268,7 +272,7 @@ func drawText() {
         )
 
         if i < len(gameCtx.CurrentChars) - 1 {
-            fmt.Fprint(graphics.InfoTextView, "[white]|")
+            fmt.Fprint(graphics.InfoTextView, "[white][u]|")
         }
     }
 
