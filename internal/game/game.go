@@ -64,7 +64,7 @@ func StartGame() error {
 
     gameCtx = GameContext{
         CharacterPriority: characterPriority,
-        NumChars: 5,
+        NumChars: 15,
         MaxWordLength: 5,
         WordCount: 10,
         CharacterAccuracies: make(map[rune]CharacterAccuracy),
@@ -120,6 +120,16 @@ func newGame() {
     colorMap := make([]string, len(words))
     for i := 0; i < len(words); i++ {
         colorMap[i] = "white"
+    }
+
+    for _, char := range gameCtx.CurrentChars {
+        if _, ok := gameCtx.CharacterAccuracies[char]; !ok {
+            gameCtx.CharacterAccuracies[char] = CharacterAccuracy{
+                Attempts: 0,
+                Correct: 0,
+                Accuracy: -1,
+            }
+        }
     }
 
     gameCtx.Words = words
@@ -181,13 +191,7 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
 // updateAccuracy updates the accuracy of a rune given if the attempt
 // was a success or not
 func updateAccuracy(char rune, success bool) {
-    ca, ok := gameCtx.CharacterAccuracies[char]
-    
-    if !ok {
-        // Character not found, create a new CharacterAccuracy
-        ca = CharacterAccuracy{}
-    }
-    
+    ca := gameCtx.CharacterAccuracies[char]
     ca.Attempts++
     
     if success {
@@ -249,15 +253,21 @@ func drawText() {
     }        
 
     // Draw information
-    fmt.Fprint(graphics.InfoTextView, "[white]|")
-    for _, char := range gameCtx.CurrentChars {
+    for i, char := range gameCtx.CurrentChars {
+        color := "white"
+        if gameCtx.CharacterAccuracies[char].Accuracy != -1 {
+            color = interpolateColor(gameCtx.CharacterAccuracies[char].Accuracy)
+        } 
         fmt.Fprintf(
             graphics.InfoTextView,
             `["usedChars"][%s]%c[""]`,
-            interpolateColor(gameCtx.CharacterAccuracies[char].Accuracy),
+            color,
             char,
         )
-        fmt.Fprint(graphics.InfoTextView, "[white]|")
+
+        if i < len(gameCtx.CurrentChars) - 1 {
+            fmt.Fprint(graphics.InfoTextView, "[white]|")
+        }
     }
     graphics.InfoTextView.Highlight("usedChars")
 } 
