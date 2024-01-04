@@ -23,7 +23,8 @@ type CharacterAccuracy struct {
 type GameContext struct {
     Words               string                      // The words of the current game
     CurrentCharIndex    int                         // The index of the character currently in play
-    CharacterPriority   []rune                      // Slice of all characters in the dictionary sorted by priority
+    CharacterPriorities []rune                      // Slice of all characters in the dictionary sorted by priority
+    PriorityCharacter   rune                        // The priority character to include in each word
     CurrentChars        []rune                      // Slice of the currently used characters in each lesson
     CharacterAccuracies map[rune]CharacterAccuracy  // The accuracy the user has with each character
     Correct             int                         // The amount of correctly written characters this round
@@ -63,7 +64,7 @@ func StartGame() error {
     }
 
     gameCtx = GameContext{
-        CharacterPriority: characterPriority,
+        CharacterPriorities: characterPriority,
         NumChars: 15,
         MaxWordLength: 5,
         WordCount: 10,
@@ -77,7 +78,7 @@ func StartGame() error {
     }
     graphics.MainFlex.
         AddItem(graphics.MainTextView, 0, 1, true).
-        AddItem(graphics.InfoTextView, 20, 1, false)
+        AddItem(graphics.InfoTextView, 31, 1, false)
 
 
     newGame()
@@ -109,12 +110,12 @@ func StartGame() error {
 // newGame resets the game gontext by generating new words from the 
 // character priority and resetting the other fields to their original value.
 func newGame() {
-    gameCtx.CurrentChars = gameCtx.CharacterPriority[:gameCtx.NumChars]
-    priorityCharacter := gameCtx.CurrentChars[0]
+    gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.NumChars]
+    gameCtx.PriorityCharacter = getPriorityCharacter()
 
     words := ""
     for i := 0; i < gameCtx.WordCount; i++ {
-        words += fmt.Sprintf("%s ", dictionary.GenerateWord(gameCtx.CurrentChars, priorityCharacter, gameCtx.MaxWordLength))
+        words += fmt.Sprintf("%s ", dictionary.GenerateWord(gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MaxWordLength))
     }
 
     colorMap := make([]string, len(words))
@@ -253,6 +254,7 @@ func drawText() {
     }        
 
     // Draw information
+    fmt.Fprint(graphics.InfoTextView, "[yellow]Accuracy:\n")
     for i, char := range gameCtx.CurrentChars {
         color := "white"
         if gameCtx.CharacterAccuracies[char].Accuracy != -1 {
@@ -269,6 +271,13 @@ func drawText() {
             fmt.Fprint(graphics.InfoTextView, "[white]|")
         }
     }
+
+    priortiyColor := "white"
+    if gameCtx.CharacterAccuracies[gameCtx.PriorityCharacter].Accuracy != -1 {
+        priortiyColor = interpolateColor(gameCtx.CharacterAccuracies[gameCtx.PriorityCharacter].Accuracy)
+    }
+    fmt.Fprintf(graphics.InfoTextView, "\n\n[yellow]Priority: [%s][\"usedChars\"]%c[\"\"]", priortiyColor, gameCtx.PriorityCharacter)
+
     graphics.InfoTextView.Highlight("usedChars")
 } 
 
@@ -301,4 +310,19 @@ func interpolateColor(t float64) string {
 	// Convert the interpolated color to hex format
 	colorHex := fmt.Sprintf("#%02X%02X%02X", r, g, b)
 	return colorHex
+}
+
+
+func getPriorityCharacter() rune {
+    least := 1.0
+    priorityChar := gameCtx.CurrentChars[0]
+
+    for char, ca := range gameCtx.CharacterAccuracies {
+        if ca.Accuracy < least {
+            least = ca.Accuracy
+            priorityChar = char 
+        }
+    }
+
+    return priorityChar
 }
