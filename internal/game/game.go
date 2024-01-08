@@ -6,16 +6,22 @@ package game
 import (
 	"fmt"
 	"image/color"
+	"time"
 
 	"github.com/Kaspetti/LayoutLearner/internal/dictionary"
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
+
+// CharacterAccuracy stores information about the accuracy and time spent
+// on a specific character
 type CharacterAccuracy struct {
-    Correct     float64
-    Attempts    float64
-    Accuracy    float64
+    Correct     int64           // The amount of correct guesses of a character
+    Attempts    int64           // The amount of attempts for each character
+    Accuracy    float64         // The accuracy of a character (Correct / Attempts)
+    TotalTime   int64           // The total time spent on all attempts in milliseconds
+    AverageTime int64           // The average time spent per attempt in milliseconds
 }
 
 
@@ -32,6 +38,8 @@ type GameContext struct {
     NumChars            int                         // The number of characters from the CharacterPriority to user when generating wwords
     MaxWordLength       int                         // The maximum length of words generated
     WordCount           int                         // Amount of words generated per round
+    Started             bool                        // Started becomes true the moment the player hits a button
+    StartTimeCharacter  int64                       // The time when the current character went into play in milliseconds since unix
 }
 
 
@@ -138,6 +146,7 @@ func newGame() {
     gameCtx.CurrentCharIndex = 0
     gameCtx.Correct = 0
     gameCtx.Incorrect = 0
+    gameCtx.Started = false
 }
 
 
@@ -162,15 +171,25 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
     }
 
     if event.Rune() == rune(gameCtx.Words[gameCtx.CurrentCharIndex]) {
+        updateAccuracy(rune(gameCtx.Words[gameCtx.CurrentCharIndex]), true)
+
+        if !gameCtx.Started {
+            gameCtx.Started = true
+            gameCtx.StartTimeCharacter = time.Now().UnixMilli()
+        } else {
+            ca := gameCtx.CharacterAccuracies[rune(gameCtx.Words[gameCtx.CurrentCharIndex])]
+            ca.TotalTime += time.Now().UnixMilli() - gameCtx.StartTimeCharacter
+            ca.AverageTime = ca.TotalTime / ca.Attempts
+
+            gameCtx.CharacterAccuracies[rune(gameCtx.Words[gameCtx.CurrentCharIndex])] = ca
+        }
+
         graphics.MainColorMap[gameCtx.CurrentCharIndex] = "blue"
         gameCtx.Correct += 1
-
-        updateAccuracy(rune(gameCtx.Words[gameCtx.CurrentCharIndex]), true)
     } else {
+        updateAccuracy(rune(gameCtx.Words[gameCtx.CurrentCharIndex]), false)
         graphics.MainColorMap[gameCtx.CurrentCharIndex] = "red"
         gameCtx.Incorrect += 1
-
-        updateAccuracy(rune(gameCtx.Words[gameCtx.CurrentCharIndex]), false)
     }
 
     drawText()
@@ -183,9 +202,9 @@ func gameLogic(event *tcell.EventKey) *tcell.EventKey {
     }
 
     graphics.MainTextView.Highlight(fmt.Sprintf("%d", gameCtx.CurrentCharIndex))
+    gameCtx.StartTimeCharacter = time.Now().UnixMilli()
 
     return event
-
 }
 
 
@@ -280,7 +299,18 @@ func drawText() {
     if gameCtx.CharacterAccuracies[gameCtx.PriorityCharacter].Accuracy != -1 {
         priortiyColor = interpolateColor(gameCtx.CharacterAccuracies[gameCtx.PriorityCharacter].Accuracy)
     }
-    fmt.Fprintf(graphics.InfoTextView, "\n\n[yellow]Priority: [%s][\"usedChars\"]%c[\"\"]", priortiyColor, gameCtx.PriorityCharacter)
+    fmt.Fprintf(graphics.InfoTextView, "\n\n[yellow]Priority: [%s][\"usedChars\"]%c[\"\"][white]", priortiyColor, gameCtx.PriorityCharacter)
+
+    fmt.Fprintf(graphics.InfoTextView, "\n\n[yellow]Average times:")
+    for char, ca := range gameCtx.CharacterAccuracies {
+        if ca.AverageTime >= 1000 {
+            averageTime := float64(ca.AverageTime) / 1000.0
+            fmt.Fprintf(graphics.InfoTextView, "\n%c=%.2fs", char, averageTime)
+            continue
+        }
+        fmt.Fprintf(graphics.InfoTextView, "\n%c=%dms", char, ca.AverageTime)
+    }
+
 
     graphics.InfoTextView.Highlight("usedChars")
 } 
