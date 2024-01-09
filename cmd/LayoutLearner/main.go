@@ -1,10 +1,10 @@
 package main
 
 import (
-	"github.com/Kaspetti/LayoutLearner/internal/game"
+	"github.com/Kaspetti/LayoutLearner/internal/gamelogic"
 )
 
 
 func main() {
-    game.StartGame()
+    gamelogic.StartGame()
 }
