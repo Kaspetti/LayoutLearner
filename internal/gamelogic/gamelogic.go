@@ -86,10 +86,18 @@ func newGame() {
     gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.NumChars]
     gameCtx.PriorityCharacter = getPriorityCharacter()
 
+    //words := ""
+    //for i := 0; i < gameCtx.WordCount; i++ {
+    //    words += fmt.Sprintf("%s ", dictionary.GenerateWord(gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MaxWordLength))
+    //}
+
+    //TODO : Handle error
+    wordsList, _ := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.WordCount)
     words := ""
-    for i := 0; i < gameCtx.WordCount; i++ {
-        words += fmt.Sprintf("%s ", dictionary.GenerateWord(gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MaxWordLength))
+    for _, word := range wordsList {
+        words += fmt.Sprintf("%s ", word)
     }
+
 
     colorMap := make([]string, len(words))
     for i := 0; i < len(words); i++ {

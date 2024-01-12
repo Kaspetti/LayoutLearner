@@ -1,18 +1,18 @@
-// Package dictionary contains functionality for any dictonary operations for the 
+// Package dictionary contains functionality for any dictonary operations for the
 // layout learner. Included are functions for getting the most used characters given a
 // file of words, and also for generating random "words" given som parameters.
 package dictionary
 
 import (
 	"bufio"
+	"fmt"
 	"math/rand"
 	"os"
 	"sort"
 	"strings"
 )
 
-
-// GetCharacterPriority returns a list of character priorities for each character in a 
+// GetCharacterPriority returns a list of character priorities for each character in a
 // dictionary given the path of the dictionary file.
 func GetCharacterPriority(dictionaryPath string) ([]rune, error) {
     f, err := os.Open(dictionaryPath)
@@ -121,4 +121,50 @@ func getRandomCharacter(chars []rune, charsUsed map[rune]int, maxUsage int, excl
     } else {
         return ' '
     }
+}
+
+
+func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, amount int) ([]string, error) {
+    f, err := os.Open(dictionaryPath)
+    if err != nil {
+        return nil, err
+    }
+    defer f.Close()
+
+    scanner := bufio.NewScanner(f)
+
+    charsSet := make(map[rune]bool)
+    for _, char := range chars {
+        charsSet[char] = true
+    }
+
+    words := make([]string, 0)
+
+    priorityFound := false
+    invalidChar := false
+    for scanner.Scan() {
+        word := scanner.Text()
+        for _, char := range word {
+            if !charsSet[char] {
+                invalidChar = true
+                break
+            }
+
+            if char == priorityChar {
+                priorityFound = true
+            }
+        }
+
+        if !invalidChar && priorityFound {
+            words = append(words, word)
+        }
+    }
+
+    selectedWords := make([]string, amount)
+    for i := 0; i < amount; i++ {
+        selectedWords[i] = words[rand.Intn(len(words))]
+    }
+
+
+    return selectedWords, nil
 }
