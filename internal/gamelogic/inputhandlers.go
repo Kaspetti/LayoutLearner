@@ -73,10 +73,6 @@ func gameInputHandler(event *tcell.EventKey) *tcell.EventKey {
 func endScreenInputHandler(event *tcell.EventKey) *tcell.EventKey {
     if event.Key() == tcell.KeyEnter {
         newGame()
-        graphicsCtx.MainTextView.Highlight("0")
-        graphicsCtx.DrawText(gameCtx.Words, gameCtx.PriorityCharacter, gameCtx.CurrentChars, gameCtx.CharacterAccuracies)
-
-        inputCaptureChangeChan <- gameInputHandler
         return nil
     } else if event.Key() == tcell.KeyEscape {
         graphicsCtx.App.Stop()

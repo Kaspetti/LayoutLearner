@@ -3,6 +3,7 @@
 // file of words, and also for generating random "words" given som parameters.
 package dictionary
 
+
 import (
 	"bufio"
 	"math/rand"
@@ -10,6 +11,7 @@ import (
 	"sort"
 	"strings"
 )
+
 
 // GetCharacterPriority returns a list of character priorities for each character in a
 // dictionary given the path of the dictionary file.
@@ -123,7 +125,8 @@ func getRandomCharacter(chars []rune, charsUsed map[rune]int, maxUsage int, excl
 }
 
 
-func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, amount int) ([]string, error) {
+// TODO: Handle when there are less than a desired amount of words
+func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, maxLength int, amount int) ([]string, error) {
     f, err := os.Open(dictionaryPath)
     if err != nil {
         return nil, err
@@ -143,6 +146,11 @@ func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, a
         priorityFound := false
         invalidChar := false
         word := strings.ToLower(scanner.Text())
+
+        if len(word) > maxLength {
+            continue
+        }
+
         for _, char := range word {
             if !charsSet[char] {
                 invalidChar = true

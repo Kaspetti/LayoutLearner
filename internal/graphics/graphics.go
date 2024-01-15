@@ -105,6 +105,13 @@ func (gc *GraphicsContext) ShowEndScreen(correct, incorrect float64) {
 }
 
 
+func (gc *GraphicsContext) ShowErrorScreen(while string, err error) {
+    gc.MainTextView.Clear()
+
+    fmt.Fprintf(gc.MainTextView, "[red]An error occured while %s.\n\n%s", while, err)
+}
+
+
 func interpolateColor(t float64) string {
 	if t < 0 {
 		t = 0

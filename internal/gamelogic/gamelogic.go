@@ -54,12 +54,8 @@ func StartGame() error {
         WordCount: 10,
         CharacterAccuracies: make(map[rune]shared.CharacterAccuracy),
     }
+
     graphicsCtx = graphics.InitializeGraphics()
-
-    newGame()
-    graphicsCtx.DrawText(gameCtx.Words, gameCtx.PriorityCharacter, gameCtx.CurrentChars, gameCtx.CharacterAccuracies)
-    graphicsCtx.MainTextView.Highlight("0")
-
     graphicsCtx.App.SetInputCapture(gameInputHandler)
 
     // Sets up the goroutine for handling switching of input capture functions
@@ -72,6 +68,7 @@ func StartGame() error {
         }
     }()
 
+    newGame()
     if err := graphicsCtx.App.SetRoot(graphicsCtx.MainFlex, true).Run(); err != nil {
         return err
     }
@@ -86,13 +83,15 @@ func newGame() {
     gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.NumChars]
     gameCtx.PriorityCharacter = getPriorityCharacter()
 
-    //words := ""
-    //for i := 0; i < gameCtx.WordCount; i++ {
-    //    words += fmt.Sprintf("%s ", dictionary.GenerateWord(gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MaxWordLength))
-    //}
 
-    //TODO : Handle error
-    wordsList, _ := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.WordCount)
+    // TODO: Dynamic maximum length
+    wordsList, err := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, 5, gameCtx.WordCount)
+    if err != nil {
+        graphicsCtx.ShowErrorScreen("generating new words", err)
+        inputCaptureChangeChan <- endScreenInputHandler 
+        return
+    }
+
     words := ""
     for _, word := range wordsList {
         words += fmt.Sprintf("%s ", word)
@@ -120,6 +119,9 @@ func newGame() {
     gameCtx.Correct = 0
     gameCtx.Incorrect = 0
     gameCtx.Started = false
+
+    graphicsCtx.MainTextView.Highlight("0")
+    graphicsCtx.DrawText(gameCtx.Words, gameCtx.PriorityCharacter, gameCtx.CurrentChars, gameCtx.CharacterAccuracies)
 }
 
 
