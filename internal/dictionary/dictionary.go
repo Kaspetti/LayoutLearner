@@ -5,7 +5,6 @@ package dictionary
 
 import (
 	"bufio"
-	"fmt"
 	"math/rand"
 	"os"
 	"sort"
@@ -140,10 +139,10 @@ func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, a
 
     words := make([]string, 0)
 
-    priorityFound := false
-    invalidChar := false
     for scanner.Scan() {
-        word := scanner.Text()
+        priorityFound := false
+        invalidChar := false
+        word := strings.ToLower(scanner.Text())
         for _, char := range word {
             if !charsSet[char] {
                 invalidChar = true
