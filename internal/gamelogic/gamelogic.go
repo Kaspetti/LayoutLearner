@@ -49,7 +49,7 @@ func StartGame() error {
 
     gameCtx = GameContext{
         CharacterPriorities: characterPriority,
-        NumChars: 15,
+        NumChars: 5,
         MaxWordLength: 5,
         WordCount: 10,
         CharacterAccuracies: make(map[rune]shared.CharacterAccuracy),
@@ -83,9 +83,7 @@ func newGame() {
     gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.NumChars]
     gameCtx.PriorityCharacter = getPriorityCharacter()
 
-
-    // TODO: Dynamic maximum length
-    wordsList, err := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, 5, gameCtx.WordCount)
+    wordsList, err := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MaxWordLength, gameCtx.WordCount)
     if err != nil {
         graphicsCtx.ShowErrorScreen("generating new words", err)
         inputCaptureChangeChan <- endScreenInputHandler 
@@ -97,7 +95,6 @@ func newGame() {
         words += fmt.Sprintf("%s ", word)
     }
 
-
     colorMap := make([]string, len(words))
     for i := 0; i < len(words); i++ {
         colorMap[i] = "white"
@@ -105,7 +102,7 @@ func newGame() {
 
     for _, char := range gameCtx.CurrentChars {
         if _, ok := gameCtx.CharacterAccuracies[char]; !ok {
-            gameCtx.CharacterAccuracies[char] = shared.CharacterAccuracy{
+            gameCtx.CharacterAccuracies[char] = shared.CharacterAccuracy {
                 Attempts: 0,
                 Correct: 0,
                 Accuracy: -1,
@@ -122,6 +119,8 @@ func newGame() {
 
     graphicsCtx.MainTextView.Highlight("0")
     graphicsCtx.DrawText(gameCtx.Words, gameCtx.PriorityCharacter, gameCtx.CurrentChars, gameCtx.CharacterAccuracies)
+
+    inputCaptureChangeChan <- gameInputHandler
 }
 
 
