@@ -118,21 +118,21 @@ func getRandomCharacter(chars []rune, charsUsed map[rune]int, maxUsage int, excl
     }
 
     if len(availableChars) > 0 {
-        return availableChars[rand.Intn((len(availableChars)))]
+        return availableChars[rand.Intn(len(availableChars))]
     } else {
         return ' '
     }
 }
 
 
+// GetWordsFromChars gets "amount" of chars from the dictionary passed to it which use only the characters used in "chars",  
+// which contain the "priorityChar" and satisfy the min and max length.
 func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, minLength, maxLength, amount int) ([]string, error) {
     f, err := os.Open(dictionaryPath)
     if err != nil {
         return nil, err
     }
     defer f.Close()
-
-    scanner := bufio.NewScanner(f)
 
     charsSet := make(map[rune]bool)
     for _, char := range chars {
@@ -141,6 +141,7 @@ func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, m
 
     words := make([]string, 0)
 
+    scanner := bufio.NewScanner(f)
     for scanner.Scan() {
         priorityFound := false
         invalidChar := false
