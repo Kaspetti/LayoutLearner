@@ -125,7 +125,7 @@ func getRandomCharacter(chars []rune, charsUsed map[rune]int, maxUsage int, excl
 }
 
 
-// GetWordsFromChars gets "amount" of chars from the dictionary passed to it which use only the characters used in "chars",  
+// GetWordsFromChars gets "amount" of words from the dictionary passed to it which use only the characters in "chars",  
 // which contain the "priorityChar" and satisfy the min and max length.
 func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, minLength, maxLength, amount int) ([]string, error) {
     f, err := os.Open(dictionaryPath)
