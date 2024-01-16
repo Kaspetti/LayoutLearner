@@ -59,8 +59,8 @@ func (gc *GraphicsContext) DrawText(words string, priorityChar rune, currentChar
     fmt.Fprint(gc.InfoTextView, "[yellow]Accuracy:\n")
     for i, char := range currentChars {
         color := "white"
-        if characterAccuracies[char].Accuracy != -1 {
-            color = interpolateColor(characterAccuracies[char].Accuracy)
+        if characterAccuracies[char].Score != -1 {
+            color = interpolateColor(characterAccuracies[char].Score)
         } 
         fmt.Fprintf(
             gc.InfoTextView,
@@ -75,8 +75,8 @@ func (gc *GraphicsContext) DrawText(words string, priorityChar rune, currentChar
     }
 
     priortiyColor := "white"
-    if characterAccuracies[priorityChar].Accuracy != -1 {
-        priortiyColor = interpolateColor(characterAccuracies[priorityChar].Accuracy)
+    if characterAccuracies[priorityChar].Score != -1 {
+        priortiyColor = interpolateColor(characterAccuracies[priorityChar].Score)
     }
     fmt.Fprintf(gc.InfoTextView, "\n\n[yellow]Priority: [%s][\"usedChars\"]%c[\"\"][white]", priortiyColor, priorityChar)
 
@@ -90,6 +90,10 @@ func (gc *GraphicsContext) DrawText(words string, priorityChar rune, currentChar
         fmt.Fprintf(gc.InfoTextView, "\n%c=%dms", char, ca.AverageTime)
     }
 
+    fmt.Fprintf(gc.InfoTextView, "\n\n[yellow]Scores:")
+    for char, ca := range characterAccuracies {
+        fmt.Fprintf(gc.InfoTextView, "\n%c=%.2f", char, ca.Score)
+    }
 
     gc.InfoTextView.Highlight("usedChars")
 } 

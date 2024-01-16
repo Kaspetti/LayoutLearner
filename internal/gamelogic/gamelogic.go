@@ -25,6 +25,9 @@ type GameContext struct {
     WordCount           int                                 // Amount of words generated per round
     Started             bool                                // Started becomes true the moment the player hits a button
     StartTimeCharacter  int64                               // The time when the current character went into play in milliseconds since unix
+    TargetCPM           int64                               // The target "characters per minute" for the user. Used for calculating speed score
+    AccuracyWeight      float64                             // The weight of the character accuracy when calculating the total score
+    TimeWeight          float64                             // The weight of the time score in calcualting the total score
 }
 
 
@@ -55,6 +58,9 @@ func StartGame() error {
         MaxWordLength: 5,
         WordCount: 10,
         CharacterAccuracies: make(map[rune]shared.CharacterAccuracy),
+        TargetCPM: 250,
+        TimeWeight: 0.5,
+        AccuracyWeight: 0.5,
     }
 
     graphicsCtx = graphics.InitializeGraphics()
@@ -107,7 +113,7 @@ func newGame() {
             gameCtx.CharacterAccuracies[char] = shared.CharacterAccuracy {
                 Attempts: 0,
                 Correct: 0,
-                Accuracy: -1,
+                Score: -1,
             }
         }
     }
@@ -143,6 +149,17 @@ func updateAccuracy(char rune, success bool) {
         ca.Accuracy = 0.0
     }
 
+    // Get the target speed per character in ms depending on the TargetCPM
+    targetSpeedMs := 60000 / gameCtx.TargetCPM
+    lowerBound := targetSpeedMs / 2
+    speed := ca.AverageTime
+    if speed < lowerBound {
+        speed = lowerBound
+    }
+    speedScore := 1 - (speed - lowerBound) / (targetSpeedMs - lowerBound)
+
+    ca.Score = (ca.Accuracy * gameCtx.AccuracyWeight) + (float64(speedScore) * gameCtx.TimeWeight)
+
     // Update or add the character accuracy in the map
     gameCtx.CharacterAccuracies[char] = ca
 }
@@ -153,8 +170,8 @@ func getPriorityCharacter() rune {
     priorityChar := gameCtx.CurrentChars[0]
 
     for char, ca := range gameCtx.CharacterAccuracies {
-        if ca.Accuracy < least {
-            least = ca.Accuracy
+        if ca.Score < least {
+            least = ca.Score
             priorityChar = char 
         }
     }

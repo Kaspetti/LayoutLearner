@@ -11,4 +11,5 @@ type CharacterAccuracy struct {
     Accuracy    float64         // The accuracy of a character (Correct / Attempts)
     TotalTime   int64           // The total time spent on all attempts in milliseconds
     AverageTime int64           // The average time spent per attempt in milliseconds
+    Score       float64         // The total score of the character considering accuracy and time
 }
