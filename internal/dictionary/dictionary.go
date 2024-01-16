@@ -56,8 +56,8 @@ func GetCharacterPriority(dictionaryPath string) ([]rune, error) {
 // GenerateWord generates a random word using the characters provided. The caller may choose the
 // length of the word and a priority character. The priority character is guaranteed to be within
 // the word. 
-func GenerateWord(chars []rune, priorityCharacter rune, maxLength int) string {
-    length := rand.Intn(maxLength-2) + 3
+func GenerateWord(chars []rune, priorityCharacter rune, minLength, maxLength int) string {
+    length := rand.Intn(maxLength-(minLength-1)) + minLength
     priorityPosition := rand.Intn(length)
 
     charsUsed := make(map[rune]int)
@@ -125,8 +125,7 @@ func getRandomCharacter(chars []rune, charsUsed map[rune]int, maxUsage int, excl
 }
 
 
-// TODO: Handle when there are less than a desired amount of words
-func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, maxLength int, amount int) ([]string, error) {
+func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, minLength, maxLength, amount int) ([]string, error) {
     f, err := os.Open(dictionaryPath)
     if err != nil {
         return nil, err
@@ -147,7 +146,7 @@ func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, m
         invalidChar := false
         word := strings.ToLower(scanner.Text())
 
-        if len(word) > maxLength {
+        if len(word) > maxLength || len(word) < minLength {
             continue
         }
 
@@ -164,6 +163,12 @@ func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, m
 
         if !invalidChar && priorityFound {
             words = append(words, word)
+        }
+    }
+
+    if len(words) < 4 {
+        for i := 0; i < len(words) - 4; i++ {
+            words = append(words, GenerateWord(chars, priorityChar, minLength, maxLength))
         }
     }
 

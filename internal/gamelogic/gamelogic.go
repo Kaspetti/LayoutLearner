@@ -21,6 +21,7 @@ type GameContext struct {
     Incorrect           int                                 // The amount of incorrently written characters this round
     NumChars            int                                 // The number of characters from the CharacterPriority to user when generating wwords
     MaxWordLength       int                                 // The maximum length of words generated
+    MinWordLength       int                                 // The minimum length of the words generated
     WordCount           int                                 // Amount of words generated per round
     Started             bool                                // Started becomes true the moment the player hits a button
     StartTimeCharacter  int64                               // The time when the current character went into play in milliseconds since unix
@@ -50,6 +51,7 @@ func StartGame() error {
     gameCtx = GameContext{
         CharacterPriorities: characterPriority,
         NumChars: 5,
+        MinWordLength: 3,
         MaxWordLength: 5,
         WordCount: 10,
         CharacterAccuracies: make(map[rune]shared.CharacterAccuracy),
@@ -83,7 +85,7 @@ func newGame() {
     gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.NumChars]
     gameCtx.PriorityCharacter = getPriorityCharacter()
 
-    wordsList, err := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MaxWordLength, gameCtx.WordCount)
+    wordsList, err := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MinWordLength, gameCtx.MaxWordLength, gameCtx.WordCount)
     if err != nil {
         graphicsCtx.ShowErrorScreen("generating new words", err)
         inputCaptureChangeChan <- endScreenInputHandler 
