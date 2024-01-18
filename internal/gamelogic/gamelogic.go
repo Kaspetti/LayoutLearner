@@ -19,15 +19,19 @@ type GameContext struct {
     CharacterAccuracies map[rune]shared.CharacterAccuracy   // The accuracy the user has with each character
     Correct             int                                 // The amount of correctly written characters this round
     Incorrect           int                                 // The amount of incorrently written characters this round
-    NumChars            int                                 // The number of characters from the CharacterPriority to user when generating wwords
-    MaxWordLength       int                                 // The maximum length of words generated
-    MinWordLength       int                                 // The minimum length of the words generated
-    WordCount           int                                 // Amount of words generated per round
     Started             bool                                // Started becomes true the moment the player hits a button
     StartTimeCharacter  int64                               // The time when the current character went into play in milliseconds since unix
-    TargetCPM           int64                               // The target "characters per minute" for the user. Used for calculating speed score
-    AccuracyWeight      float64                             // The weight of the character accuracy when calculating the total score
-    TimeWeight          float64                             // The weight of the time score in calcualting the total score
+    Settings            GameSettings                        // The settings for the game
+}
+
+type GameSettings struct {
+    NumChars            int                                 // The number of characters to use from CharacterPriorities
+    MaxWordLength       int                                 // The max word length (inclusive)
+    MinWordLength       int                                 // The min word length (inclusive)
+    WordCount           int                                 // The amount of words to include in the lesson
+    TargetCPM           int                                 // The target "characters per minute" used for scoring
+    AccuracyWeight      float64                             // The weight at which accuracy affects the final score
+    TimeWeight          float64                             // The weight at which speed affects the final score
 }
 
 
@@ -53,14 +57,17 @@ func StartGame() error {
 
     gameCtx = GameContext{
         CharacterPriorities: characterPriority,
-        NumChars: 5,
-        MinWordLength: 3,
-        MaxWordLength: 5,
-        WordCount: 10,
         CharacterAccuracies: make(map[rune]shared.CharacterAccuracy),
-        TargetCPM: 250,
-        TimeWeight: 0.5,
-        AccuracyWeight: 0.5,
+        
+        Settings: GameSettings{
+            NumChars: 5,
+            MinWordLength: 3,
+            MaxWordLength: 5,
+            WordCount: 10,
+            TargetCPM: 250,
+            TimeWeight: 0.5,
+            AccuracyWeight: 0.5,
+        },
     }
 
     graphicsCtx = graphics.InitializeGraphics()
@@ -88,10 +95,17 @@ func StartGame() error {
 // newGame resets the game gontext by generating new words from the 
 // character priority and resetting the other fields to their original value.
 func newGame() {
-    gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.NumChars]
+    gameCtx.CurrentChars = gameCtx.CharacterPriorities[:gameCtx.Settings.NumChars]
     gameCtx.PriorityCharacter = getPriorityCharacter()
 
-    wordsList, err := dictionary.GetWordsFromChars("resources/words.txt", gameCtx.CurrentChars, gameCtx.PriorityCharacter, gameCtx.MinWordLength, gameCtx.MaxWordLength, gameCtx.WordCount)
+    wordsList, err := dictionary.GetWordsFromChars(
+        "resources/words.txt", 
+        gameCtx.CurrentChars, 
+        gameCtx.PriorityCharacter, 
+        gameCtx.Settings.MinWordLength, 
+        gameCtx.Settings.MaxWordLength, 
+        gameCtx.Settings.WordCount,
+    )
     if err != nil {
         graphicsCtx.ShowErrorScreen("generating new words", err)
         inputCaptureChangeChan <- endScreenInputHandler 
@@ -150,15 +164,15 @@ func updateAccuracy(char rune, success bool) {
     }
 
     // Get the target speed per character in ms depending on the TargetCPM
-    targetSpeedMs := 60000 / gameCtx.TargetCPM
+    targetSpeedMs := 60000 / gameCtx.Settings.TargetCPM
     lowerBound := targetSpeedMs / 2
     speed := ca.AverageTime
-    if speed < lowerBound {
-        speed = lowerBound
+    if speed < int64(lowerBound) {
+        speed = int64(lowerBound)
     }
-    speedScore := 1 - (speed - lowerBound) / (targetSpeedMs - lowerBound)
+    speedScore := 1 - (float64(speed - int64(lowerBound)) / float64(targetSpeedMs - lowerBound))
 
-    ca.Score = (ca.Accuracy * gameCtx.AccuracyWeight) + (float64(speedScore) * gameCtx.TimeWeight)
+    ca.Score = (ca.Accuracy * gameCtx.Settings.AccuracyWeight) + (speedScore * gameCtx.Settings.TimeWeight)
 
     // Update or add the character accuracy in the map
     gameCtx.CharacterAccuracies[char] = ca
@@ -170,6 +184,10 @@ func getPriorityCharacter() rune {
     priorityChar := gameCtx.CurrentChars[0]
 
     for char, ca := range gameCtx.CharacterAccuracies {
+        if char == ' ' {
+            continue
+        }
+
         if ca.Score < least {
             least = ca.Score
             priorityChar = char 

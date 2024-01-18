@@ -57,7 +57,7 @@ func GetCharacterPriority(dictionaryPath string) ([]rune, error) {
 // length of the word and a priority character. The priority character is guaranteed to be within
 // the word. 
 func GenerateWord(chars []rune, priorityCharacter rune, minLength, maxLength int) string {
-    length := rand.Intn(maxLength-(minLength-1)) + minLength
+    length := rand.Intn(maxLength-minLength) + minLength
     priorityPosition := rand.Intn(length)
 
     charsUsed := make(map[rune]int)
@@ -168,7 +168,7 @@ func GetWordsFromChars(dictionaryPath string, chars []rune, priorityChar rune, m
     }
 
     if len(words) < 4 {
-        for i := 0; i < len(words) - 4; i++ {
+        for i := 0; i < 4 - len(words); i++ {
             words = append(words, GenerateWord(chars, priorityChar, minLength, maxLength))
         }
     }
