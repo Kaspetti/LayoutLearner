@@ -24,6 +24,7 @@ type GameContext struct {
     Settings            GameSettings                        // The settings for the game
 }
 
+// GameSettings stores the settings for the game. AccuracyWeight and TimeWeight should add up to 1.0
 type GameSettings struct {
     NumChars            int                                 // The number of characters to use from CharacterPriorities
     MaxWordLength       int                                 // The max word length (inclusive)
