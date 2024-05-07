@@ -54,6 +54,7 @@ func gameInputHandler(event *tcell.EventKey) *tcell.EventKey {
     gameCtx.CurrentCharIndex += 1
     if gameCtx.CurrentCharIndex >= len(gameCtx.Words) - 1 {
         graphicsCtx.ShowEndScreen(float64(gameCtx.Correct), float64(gameCtx.Incorrect))
+        SaveCharacterAccuracies()
         inputCaptureChangeChan <- endScreenInputHandler
         return event
     }

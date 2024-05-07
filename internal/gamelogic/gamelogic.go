@@ -1,7 +1,11 @@
 package gamelogic
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/Kaspetti/LayoutLearner/internal/dictionary"
 	"github.com/Kaspetti/LayoutLearner/internal/graphics"
@@ -56,9 +60,23 @@ func StartGame() error {
         return err
     }
 
+    var charAccuracies map[rune]shared.CharacterAccuracy
+    if _, err := os.Stat("accuracies"); errors.Is(err, os.ErrNotExist) {
+        charAccuracies = make(map[rune]shared.CharacterAccuracy)
+    } else {
+        saveData, err := os.ReadFile("accuracies")
+        if err != nil {
+            return err
+        }
+
+        if err := json.Unmarshal(saveData, &charAccuracies); err != nil {
+            return err
+        }
+    }
+
     gameCtx = GameContext{
         CharacterPriorities: characterPriority,
-        CharacterAccuracies: make(map[rune]shared.CharacterAccuracy),
+        CharacterAccuracies: charAccuracies,
         
         Settings: GameSettings{
             NumChars: 5,
@@ -143,6 +161,10 @@ func newGame() {
     graphicsCtx.MainTextView.Highlight("0")
     graphicsCtx.DrawText(gameCtx.Words, gameCtx.PriorityCharacter, gameCtx.CurrentChars, gameCtx.CharacterAccuracies)
 
+    if err := SaveCharacterAccuracies(); err != nil {
+        log.Fatalln(err)
+    }
+
     inputCaptureChangeChan <- gameInputHandler
 }
 
@@ -196,4 +218,25 @@ func getPriorityCharacter() rune {
     }
 
     return priorityChar
+}
+
+
+func SaveCharacterAccuracies() error {
+    b, err := json.Marshal(gameCtx.CharacterAccuracies)
+    if err != nil {
+        return err
+    }   
+
+    file, errs := os.Create("accuracies")
+    if errs != nil {
+        return err
+    }
+    defer file.Close()
+
+    _, err = file.WriteString(string(b))
+    if err != nil {
+        return err
+    }
+    
+    return nil
 }
