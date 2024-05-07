@@ -77,6 +77,32 @@ func endScreenInputHandler(event *tcell.EventKey) *tcell.EventKey {
         return nil
     } else if event.Key() == tcell.KeyEscape {
         graphicsCtx.App.Stop()
+        return nil
+    } else if event.Rune() == '1' {
+        graphicsCtx.ShowConfirmDeleteSaveScreen()
+        inputCaptureChangeChan <- clearSaveInputHandler
+        return nil
+    }
+
+    return event
+}
+
+
+// clearSaveInputHandler handles the input for the clear save screen.
+// Has two options, one for confirming delete and one for returning to
+// the end screen
+func clearSaveInputHandler(event *tcell.EventKey) *tcell.EventKey {
+    if event.Rune() == '1' {
+        graphicsCtx.ShowEndScreen(float64(gameCtx.Correct), float64(gameCtx.Incorrect))
+        inputCaptureChangeChan <- endScreenInputHandler
+        return nil
+    } else if event.Rune() == '2' {
+        if err := deleteSave(); err != nil {
+            graphicsCtx.ShowErrorScreen("clearing save file", err)
+        }
+
+        newGame() 
+        return nil
     }
 
     return event

@@ -240,3 +240,14 @@ func SaveCharacterAccuracies() error {
     
     return nil
 }
+
+
+func deleteSave() error {
+    if err := os.Remove("accuracies"); err != nil {
+        return err
+    }
+
+    gameCtx.CharacterAccuracies = make(map[rune]shared.CharacterAccuracy)
+
+    return nil
+}

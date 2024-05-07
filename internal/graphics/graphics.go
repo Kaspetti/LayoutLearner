@@ -105,7 +105,10 @@ func (gc *GraphicsContext) ShowEndScreen(correct, incorrect float64) {
     gc.MainTextView.Clear()
     accuracy := (correct * 100) / (correct + incorrect)
 
-    fmt.Fprintf(gc.MainTextView, "[white]Your accuracy was: %.2f\n[yellow]Press enter to continue...\n[red]Press escape to exit...", accuracy)
+    fmt.Fprintf(gc.MainTextView, "[white]Your accuracy was: %.2f\n", accuracy)
+    fmt.Fprintf(gc.MainTextView, "[yellow]Press enter to continue\n")
+    fmt.Fprintf(gc.MainTextView, "[red]Press escape to exit...\n\n")
+    fmt.Fprintf(gc.MainTextView, "[yellow]Press 1 to clear save file")
 }
 
 
@@ -113,6 +116,15 @@ func (gc *GraphicsContext) ShowErrorScreen(while string, err error) {
     gc.MainTextView.Clear()
 
     fmt.Fprintf(gc.MainTextView, "[red]An error occured while %s.\n\n%s", while, err)
+}
+
+
+func (gc *GraphicsContext) ShowConfirmDeleteSaveScreen() {
+    gc.MainTextView.Clear()
+
+    fmt.Fprintf(gc.MainTextView, "[white]Are you sure you want to clear the save file?\n")
+    fmt.Fprintf(gc.MainTextView, "[yellow][1] No\n")
+    fmt.Fprintf(gc.MainTextView, "[red][2] Yes\n")
 }
 
 
